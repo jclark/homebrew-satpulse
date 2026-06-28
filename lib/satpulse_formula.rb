@@ -108,9 +108,28 @@ module SatpulseFormula
     inreplace config do |s|
       s.gsub!(/^#:schema .*/, "#:schema #{opt_prefix}/share/satpulse/config-schema.json")
       s.gsub!(/^#dir = .*/, "dir = \"#{var}/log/satpulse\"")
+      # The stock comment block above #device is systemd-specific; on macOS the
+      # launchd service supplies the device via find-serial. Replace whatever
+      # comment lines precede #device, rather than matching exact wording.
+      s.sub!(
+        /(?:^#.*\n)+(?=#device)/,
+        "# The launchd service supplies the device via find-serial, passed to\n" \
+        "# satpulsed as -d. Uncomment to pin a specific device instead.\n",
+      )
     end
 
     # Do not overwrite an existing config on upgrade; user edits survive.
     etc.install config => "satpulse.toml" unless (etc/"satpulse.toml").exist?
+  end
+
+  # Printed before Homebrew's auto-generated "brew services" block; mirrors its
+  # phrasing, adding the edit step and the on-demand `run` form.
+  def caveats
+    <<~EOS
+      You should edit the config file at #{etc}/satpulse.toml before running #{name}.
+
+      To start #{full_name} now and not restart at login:
+        brew services run #{full_name}
+    EOS
   end
 end
