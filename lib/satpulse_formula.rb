@@ -25,9 +25,14 @@ module SatpulseFormula
       # find-serial runs in --exec mode and replaces {} with the current
       # /dev/cu.* path before execing satpulsed. Default match is any USB serial
       # callout device; add --vid/--pid here if multiple are present.
+      #
+      # Deliberately no keep_alive: the daemon runs once when the user starts the
+      # service. Auto-restart is unsafe today -- find-serial matches any USB
+      # serial device, so a respawn could grab an unrelated device (likely at the
+      # wrong baud rate). Re-introducing restart needs a find-serial --wait that
+      # blocks on a specific VID/PID first (base-repo work).
       run [opt_bin/"find-serial", "--exec", "--",
            opt_sbin/"satpulsed", "-f", etc/"satpulse.toml", "-d", "{}"]
-      keep_alive true
       log_path var/"log/satpulse/launchd.out.log"
       error_log_path var/"log/satpulse/launchd.err.log"
     end
