@@ -42,6 +42,33 @@ formula updates:
   `share/satpulse` (use `share/"satpulse"`, NOT `pkgshare`, which would be
   `share/satpulse-pre` for that formula).
 
+## Updating the pinned revisions
+
+There are **no `sha256` checksums** to maintain — the formulae use Homebrew's git
+download strategy, so the commit `revision` IS the integrity check.
+
+- `Formula/satpulse.rb` is **head-only**: it follows `master`'s tip
+  automatically, so "match head" needs no edit. (When v0.3 ships, add a `stable`
+  block — `url "...git", tag: "v0.3", revision: "<sha>"` — keeping the `head`
+  line.)
+- `Formula/satpulse-pre.rb` pins one commit. To re-point it, get the target
+  commit and its UTC date:
+
+      # latest master tip ("match head")
+      gh api repos/jclark/satpulse/commits/master --jq '.sha, .commit.committer.date'
+      # a specific commit ("match a particular prerelease")
+      gh api repos/jclark/satpulse/commits/<sha-or-ref> --jq '.sha, .commit.committer.date'
+
+  then edit two lines in the formula:
+
+      revision: "<full 40-char sha>"
+      version  "0.3-pre-<YYYYMMDD>"      # the commit's UTC date, no dashes
+
+  `version` must increase monotonically for `brew upgrade` to fire. The date is
+  normally enough; if you re-point twice in one UTC day, append a disambiguator
+  (e.g. `0.3-pre-YYYYMMDD.2`). Validate as in "Local testing", then confirm with
+  `satpulsetool --version`, which stamps the version and the short sha.
+
 ## Pinned Go version
 
 The build pins `depends_on "go@1.25" => :build` to match satpulse's tested Go
@@ -85,6 +112,26 @@ Notes:
   manually if you need a fresh default.
 - When done, untap and uninstall so the machine isn't left on the local-path
   tap: `brew untap jclark/satpulse; brew uninstall satpulse satpulse-pre`.
+
+## Restore the machine to a clean (pre-tap) state
+
+After local testing, remove everything so the real GitHub tap can be tested from
+scratch:
+
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    brew services stop satpulse 2>/dev/null
+    # uninstall each separately: uninstalling a NOT-installed formula from an
+    # untrusted local-path tap errors and would abort a combined command
+    brew uninstall --force satpulse     2>/dev/null
+    brew uninstall --force satpulse-pre 2>/dev/null
+    rm -f  "$(brew --prefix)/etc/satpulse.toml"     # brew leaves config behind
+    rm -rf "$(brew --prefix)/var/log/satpulse"
+    brew untap jclark/satpulse          2>/dev/null
+
+Verify clean: `brew list | grep satpulse` prints nothing, and
+`$(brew --prefix)/Library/Taps/jclark` is gone. (`go@1.25`/`pandoc` build deps
+may remain; `brew autoremove` drops them, but a fresh install re-fetches them
+anyway.)
 
 ## CI
 
