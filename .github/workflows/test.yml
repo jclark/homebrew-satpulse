@@ -1,0 +1,39 @@
+name: brew test
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  syntax:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      # setup-homebrew taps and trusts this repo automatically (it detects the
+      # tap from the checkout); a manual `brew tap` would clash with it.
+      - uses: Homebrew/actions/setup-homebrew@main
+      - run: brew test-bot --only-tap-syntax
+
+  test:
+    # Apple Silicon only; the project does not test or ship for Intel macOS.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      # setup-homebrew taps and trusts this repo automatically.
+      - uses: Homebrew/actions/setup-homebrew@main
+      # satpulse (HEAD channel). Hardware-free smoke test (no serial device on a
+      # runner). satpulsetool and find-serial link into bin (on PATH); satpulsed
+      # links into sbin, which may not be, so call it by its prefix path.
+      # find-serial uses --help (deterministic exit 0); listing mode depends on
+      # IOKit enumeration and is not reliable on a headless runner.
+      - run: brew install --HEAD --build-from-source jclark/satpulse/satpulse
+      - run: satpulsetool --version
+      - run: '"$(brew --prefix)/sbin/satpulsed" --help'
+      - run: find-serial --help
+      # Prerelease channel. Unlink first: both formulae ship the same binaries, so
+      # they cannot be linked at the same time.
+      - run: brew unlink satpulse
+      - run: brew install --build-from-source jclark/satpulse/satpulse-pre
+      - run: satpulsetool --version
+      - run: '"$(brew --prefix)/sbin/satpulsed" --help'
+      - run: find-serial --help
