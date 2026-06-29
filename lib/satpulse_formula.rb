@@ -24,9 +24,9 @@ module SatpulseFormula
 
     formula.service do
       # The job runs the satpulse-service wrapper (written by def install) rather
-      # than invoking find-serial directly, so device selection lives in
-      # etc/satpulse.env -- a config file preserved across upgrades -- instead of
-      # this plist, which brew regenerates on every install.
+      # than invoking find-serial directly, so its use of find-serial is
+      # configured in etc/find-serial.env -- a config file preserved across
+      # upgrades -- instead of this plist, which brew regenerates on every install.
       #
       # Deliberately no keep_alive: the daemon runs once when the user starts the
       # service. Auto-restart is unsafe today -- find-serial matches any USB
@@ -101,9 +101,9 @@ module SatpulseFormula
   # Install configs/satpulse.toml as the default <prefix>/etc/satpulse.toml.
   # Almost everything in it is optional and off by default, so a non-root
   # LaunchAgent needs only two edits: point the schema and log directory under
-  # the Homebrew prefix. The serial device is left unset here; the launchd
-  # service always passes one with -d (from find-serial, or SATPULSE_DEVICE in
-  # satpulse.env), so the toml device setting is unused under the service.
+  # the Homebrew prefix. The serial device is left unset here; by default the
+  # launchd service auto-discovers it with find-serial and passes it as -d. To
+  # use a fixed device, set it here and disable find-serial in find-serial.env.
   def install_config
     (var/"log/satpulse").mkpath
 
@@ -116,9 +116,9 @@ module SatpulseFormula
       # precede #device, rather than matching exact wording.
       s.sub!(
         /(?:^#.*\n)+(?=#device)/,
-        "# Unused under the launchd service, which always passes -d (from\n" \
-        "# find-serial, or SATPULSE_DEVICE in satpulse.env). Set the device\n" \
-        "# there, not here.\n",
+        "# The launchd service auto-discovers the device with find-serial and\n" \
+        "# passes it as -d. To use this setting instead, disable find-serial in\n" \
+        "# find-serial.env (set FIND_SERIAL_DISABLE).\n",
       )
     end
 
@@ -127,44 +127,45 @@ module SatpulseFormula
   end
 
   # The launchd job runs this wrapper instead of calling find-serial directly,
-  # so device selection is configured in etc/satpulse.env (a config file that
-  # survives upgrades) rather than the plist (regenerated on every install).
-  # Paths are baked in at install time; the script is overwritten on each
-  # install, so path/logic fixes ship automatically and users never edit it.
+  # so its use of find-serial is configured in etc/find-serial.env (a config
+  # file that survives upgrades) rather than the plist (regenerated on every
+  # install). Paths are baked in at install time; the script is overwritten on
+  # each install, so path/logic fixes ship automatically and users never edit it.
   def install_service_wrapper
     (libexec/"satpulse-service").write <<~SH
       #!/bin/bash
       set -a
-      if [ -r #{etc}/satpulse.env ]; then
-        . #{etc}/satpulse.env
+      if [ -r #{etc}/find-serial.env ]; then
+        . #{etc}/find-serial.env
       fi
       set +a
-      if [ -n "$SATPULSE_DEVICE" ]; then
-        exec #{opt_sbin}/satpulsed -f #{etc}/satpulse.toml -d "$SATPULSE_DEVICE"
+      if [ -n "$FIND_SERIAL_DISABLE" ]; then
+        exec #{opt_sbin}/satpulsed -f #{etc}/satpulse.toml
       fi
-      exec #{opt_bin}/find-serial $SATPULSE_FIND_SERIAL_OPTS --exec -- #{opt_sbin}/satpulsed -f #{etc}/satpulse.toml -d '{}'
+      exec #{opt_bin}/find-serial $FIND_SERIAL_OPTS --exec -- #{opt_sbin}/satpulsed -f #{etc}/satpulse.toml -d '{}'
     SH
     (libexec/"satpulse-service").chmod 0555
 
     # Default env config; like satpulse.toml, do not overwrite user edits.
-    return if (etc/"satpulse.env").exist?
+    return if (etc/"find-serial.env").exist?
 
-    (buildpath/"satpulse.env").write <<~ENV
-      # satpulse.env -- configuration for the satpulse launchd service.
+    (buildpath/"find-serial.env").write <<~ENV
+      # find-serial.env -- configures the satpulse launchd service's use of
+      # find-serial (USB serial device auto-discovery).
       # Sourced as a shell script (NAME=value, no spaces around =, # comments).
       # Apply changes with:  brew services restart satpulse   (or satpulse-pre)
 
-      # Serial device. Empty (the default) = auto-discover with find-serial.
-      # Set to a /dev/cu.* path to use that device and skip find-serial.
-      SATPULSE_DEVICE=
+      # By default the service auto-discovers the USB serial device with
+      # find-serial. Set to any non-empty value to disable that and use the
+      # `device` configured in satpulse.toml instead.
+      FIND_SERIAL_DISABLE=
 
-      # Extra find-serial options (used only when SATPULSE_DEVICE is empty), e.g.
-      # to pin one USB device when several are present. Find ids by running
-      # find-serial with no arguments.
-      #   SATPULSE_FIND_SERIAL_OPTS="--vid 1546 --pid 01A9"
-      SATPULSE_FIND_SERIAL_OPTS=
+      # Extra find-serial options (when enabled), e.g. to pin one USB device when
+      # several are present. Find ids by running find-serial with no arguments.
+      #   FIND_SERIAL_OPTS="--vid 1546 --pid 01A9"
+      FIND_SERIAL_OPTS=
     ENV
-    etc.install buildpath/"satpulse.env"
+    etc.install buildpath/"find-serial.env"
   end
 
   # Printed before Homebrew's auto-generated "brew services" block; mirrors its
@@ -173,8 +174,9 @@ module SatpulseFormula
     <<~EOS
       You should edit the config file at #{etc}/satpulse.toml before running #{name}.
 
-      The serial device is auto-discovered with find-serial. To pin a device or
-      pass find-serial options, edit #{etc}/satpulse.env.
+      The serial device is auto-discovered with find-serial. To pass find-serial
+      options or disable it (and set the device in satpulse.toml), edit
+      #{etc}/find-serial.env.
 
       To start #{full_name} now and not restart at login:
         brew services run #{full_name}
