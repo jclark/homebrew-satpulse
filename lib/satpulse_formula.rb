@@ -1,3 +1,4 @@
+# typed: strict
 # frozen_string_literal: true
 
 # Shared definition for the satpulse formulae.
