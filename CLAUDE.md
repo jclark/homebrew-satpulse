@@ -127,11 +127,39 @@ scratch:
     rm -f  "$(brew --prefix)/etc/satpulse.toml"     # brew leaves config behind
     rm -rf "$(brew --prefix)/var/log/satpulse"
     brew untap jclark/satpulse          2>/dev/null
+    # brew untap does NOT clear the trust list (see "Tap trust" below): installing
+    # recorded satpulse in $HOMEBREW_USER_CONFIG_HOME/trust.json. That dir is
+    # ~/.homebrew by default; confirm with
+    #   brew ruby -e 'puts ENV.fetch("HOMEBREW_USER_CONFIG_HOME")'
+    # If satpulse is the only thing in the file (the usual case here), just delete
+    # it — brew recreates it on demand; otherwise edit out only the satpulse lines:
+    rm -f "$(brew ruby -e 'puts ENV.fetch("HOMEBREW_USER_CONFIG_HOME")')/trust.json"
 
-Verify clean: `brew list | grep satpulse` prints nothing, and
-`$(brew --prefix)/Library/Taps/jclark` is gone. (`go@1.25`/`pandoc` build deps
-may remain; `brew autoremove` drops them, but a fresh install re-fetches them
-anyway.)
+Verify clean: `brew list | grep satpulse` prints nothing,
+`$(brew --prefix)/Library/Taps/jclark` is gone, and `trust.json` no longer lists
+`satpulse` (or is absent). (`go@1.25`/`pandoc` build deps may remain;
+`brew autoremove` drops them, but a fresh install re-fetches them anyway.)
+
+## Tap trust (qualified name = consent)
+
+Homebrew gates non-official taps behind a trust list. The crucial subtlety for
+reproducing a first-timer's experience: **`brew install` auto-trusts any formula
+you name by its fully-qualified `tap/owner/name`.** `brew install` (and
+`reinstall`/`upgrade`) calls `Homebrew::Trust.trust_fully_qualified_items!`,
+which writes the formula into `trust.json` and prints `Trusted formula …` —
+*before* anything is built. So:
+
+- `brew install jclark/satpulse/satpulse` — the qualified name **is** the
+  consent. It never shows the untrusted prompt and re-creates the `trust.json`
+  entry every time, so deleting `trust.json` first is futile against this exact
+  command. This is what the dev loop above uses (auto-trust is fine there).
+- `brew tap jclark/satpulse && brew install satpulse` — a **bare** name fails
+  brew's `full_name?` check, is skipped by auto-trust, and instead hits
+  `require_trusted_formula!` → `UntrustedTapError` ("If you trust this tap, tap
+  it explicitly… `brew trust …`"). **This is the genuine first-timer path** — use
+  the bare name to test it.
+
+`brew untap` does not clear `trust.json`; restore it as in the section above.
 
 ## CI
 
