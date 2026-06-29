@@ -120,11 +120,20 @@ scratch:
 
     export HOMEBREW_NO_AUTO_UPDATE=1
     brew services stop satpulse 2>/dev/null
+    # `brew services stop` only boots out the launchd job when the formula is
+    # installed; on a NOT-installed formula it errors and does nothing, so a
+    # registration left from earlier testing survives. A leftover registration
+    # makes the next `brew services run` fail with `Bootstrap failed: 5:
+    # Input/output error` (launchctl bootstrap on an already-present label).
+    # Boot the labels out directly, independent of install state:
+    launchctl bootout "gui/$(id -u)/homebrew.mxcl.satpulse"     2>/dev/null
+    launchctl bootout "gui/$(id -u)/homebrew.mxcl.satpulse-pre" 2>/dev/null
     # uninstall each separately: uninstalling a NOT-installed formula from an
     # untrusted local-path tap errors and would abort a combined command
     brew uninstall --force satpulse     2>/dev/null
     brew uninstall --force satpulse-pre 2>/dev/null
-    rm -f  "$(brew --prefix)/etc/satpulse.toml"     # brew leaves config behind
+    rm -f  "$(brew --prefix)/etc/satpulse.toml"        # brew leaves config behind
+    rm -f  "$(brew --prefix)/etc/find-serial.env"      # ditto for the service env
     rm -rf "$(brew --prefix)/var/log/satpulse"
     brew untap jclark/satpulse          2>/dev/null
     # brew untap does NOT clear the trust list (see "Tap trust" below): installing
@@ -136,6 +145,7 @@ scratch:
     rm -f "$(brew ruby -e 'puts ENV.fetch("HOMEBREW_USER_CONFIG_HOME")')/trust.json"
 
 Verify clean: `brew list | grep satpulse` prints nothing,
+`launchctl list | grep satpulse` prints nothing (no leftover launchd job),
 `$(brew --prefix)/Library/Taps/jclark` is gone, and `trust.json` no longer lists
 `satpulse` (or is absent). (`go@1.25`/`pandoc` build deps may remain;
 `brew autoremove` drops them, but a fresh install re-fetches them anyway.)
