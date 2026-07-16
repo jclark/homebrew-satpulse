@@ -50,13 +50,13 @@ This all works automatically provided you have only one USB serial device plugge
 
 You can run `find-serial` with no arguments to show the USB serial devices currently recognized. It will print something like
 
-```
+```text
 device=/dev/cu.usbmodem11301 vid=1546 pid=01A9 model="u-blox GNSS receiver" vendor="u-blox AG - www.u-blox.com"
 ```
 
 If you have more than one serial device, you can edit `find-serial.env` to match only a specific vendor and product id:
 
-```
+```sh
 FIND_SERIAL_OPTS="--vid 1546 --pid 01A9"
 ```
 
