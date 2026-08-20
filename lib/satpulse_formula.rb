@@ -39,7 +39,10 @@ module SatpulseFormula
     end
 
     formula.test do
-      assert_match "satpulse", shell_output("#{bin}/satpulsetool --version")
+      # Both tools print --version to stderr, so redirect it into the captured
+      # stdout; without the 2>&1 shell_output sees an empty string.
+      assert_match "satpulse", shell_output("#{bin}/satpulsetool --version 2>&1")
+      assert_match "satpulse", shell_output("#{bin}/satpulsewb --version 2>&1")
     end
   end
 
