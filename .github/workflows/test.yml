@@ -22,12 +22,14 @@ jobs:
       # setup-homebrew taps and trusts this repo automatically.
       - uses: Homebrew/actions/setup-homebrew@main
       # satpulse (HEAD channel). Hardware-free smoke test (no serial device on a
-      # runner). satpulsetool and find-serial link into bin (on PATH); satpulsed
-      # links into sbin, which may not be, so call it by its prefix path.
+      # runner). satpulsetool, satpulsewb and find-serial link into bin (on
+      # PATH); satpulsed links into sbin, which may not be, so call it by its
+      # prefix path.
       # find-serial uses --help (deterministic exit 0); listing mode depends on
       # IOKit enumeration and is not reliable on a headless runner.
       - run: brew install --HEAD --build-from-source jclark/satpulse/satpulse
       - run: satpulsetool --version
+      - run: satpulsewb --version
       - run: '"$(brew --prefix)/sbin/satpulsed" --help'
       - run: find-serial --help
       # Prerelease channel. Unlink first: both formulae ship the same binaries, so
@@ -35,5 +37,6 @@ jobs:
       - run: brew unlink satpulse
       - run: brew install --build-from-source jclark/satpulse/satpulse-pre
       - run: satpulsetool --version
+      - run: satpulsewb --version
       - run: '"$(brew --prefix)/sbin/satpulsed" --help'
       - run: find-serial --help

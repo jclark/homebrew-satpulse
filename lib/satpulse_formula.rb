@@ -51,7 +51,7 @@ module SatpulseFormula
     goarch = Hardware::CPU.arm? ? "arm64" : "amd64"
     out = "out/darwin_#{goarch}"
     sbin.install "#{out}/satpulsed"
-    bin.install "#{out}/satpulsetool"
+    bin.install "#{out}/satpulsetool", "#{out}/satpulsewb"
 
     # find-serial is a standalone Darwin C tool with its own Makefile, built
     # separately from the Go binaries (unix-build.sh does not build it).
@@ -75,9 +75,9 @@ module SatpulseFormula
   # the Makefile does, but against the Homebrew prefix.
   def install_man_pages
     man_pages = %w[
-      satpulsetool.1 satpulsetool-gps.1 satpulsetool-pack.1 satpulsetool-scan.1
-      satpulsetool-sdp.1 satpulsetool-syncsim.1 satpulsetool-convobs.1
-      satpulse.toml.5 satpulsed.8
+      satpulsetool.1 satpulsetool-gps.1 satpulsetool-serial.1 satpulsetool-pack.1
+      satpulsetool-scan.1 satpulsetool-sdp.1 satpulsetool-syncsim.1
+      satpulsetool-convobs.1 satpulsewb.1 satpulse.toml.5 satpulsed.8
     ]
     man_pages.each do |page|
       title = File.basename(page, ".*")     # e.g. "satpulse.toml" from "satpulse.toml.5"

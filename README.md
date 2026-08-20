@@ -68,6 +68,7 @@ Everything installs under the Homebrew prefix (`/opt/homebrew` on Apple Silicon,
 |---|---|
 | `satpulsed` | `<prefix>/sbin/satpulsed` |
 | `satpulsetool` | `<prefix>/bin/satpulsetool` |
+| `satpulsewb` | `<prefix>/bin/satpulsewb` |
 | `find-serial` | `<prefix>/bin/find-serial` |
 | config | `<prefix>/etc/satpulse.toml` (not overwritten on upgrade) |
 | service config | `<prefix>/etc/find-serial.env` (not overwritten on upgrade) |
