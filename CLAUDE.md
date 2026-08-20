@@ -100,6 +100,7 @@ Reliable loop:
     brew untap jclark/satpulse 2>/dev/null; brew tap jclark/satpulse "$PWD"
     brew style jclark/satpulse
     brew install --HEAD --build-from-source jclark/satpulse/satpulse   # or satpulse-pre
+    brew test jclark/satpulse/satpulse                                 # the CI smoke tests
 
 Notes:
 - `brew style` lints only Ruby. **actionlint** (which lints
@@ -176,8 +177,10 @@ which writes the formula into `trust.json` and prints `Trusted formula …` —
 `.github/workflows/test.yml` runs on PRs and pushes to `main`:
 - `syntax`: `brew test-bot --only-tap-syntax` (style + actionlint + audit).
 - `test` (macos-15, Apple Silicon only — the project does not test/ship Intel):
-  builds both channels `--build-from-source` and runs hardware-free smoke tests
-  (`satpulsetool --version`, `satpulsed --help`, `find-serial --help`).
+  builds both channels `--build-from-source` and runs `brew test` on each. The
+  smoke tests themselves live in the shared `test do` block (hardware-free:
+  `--version`/`--help` only), so `brew test <formula>` locally runs exactly what
+  CI runs.
 
 `setup-homebrew` auto-taps and trusts this repo from the checkout — do NOT add a
 manual `brew tap` step (it causes a "Tap remote mismatch" failure).

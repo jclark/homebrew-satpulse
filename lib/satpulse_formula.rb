@@ -38,11 +38,17 @@ module SatpulseFormula
       error_log_path var/"log/satpulse/launchd.err.log"
     end
 
+    # The full hardware-free smoke test: CI just runs `brew test` on each
+    # channel, so this is the single place the checks live. The Go tools print
+    # --version/--help to stderr, so redirect it into the captured stdout;
+    # without the 2>&1 shell_output sees an empty string. find-serial gets
+    # --help (deterministic exit 0) because its listing mode depends on IOKit
+    # enumeration, which is not reliable on a headless runner.
     formula.test do
-      # Both tools print --version to stderr, so redirect it into the captured
-      # stdout; without the 2>&1 shell_output sees an empty string.
       assert_match "satpulse", shell_output("#{bin}/satpulsetool --version 2>&1")
       assert_match "satpulse", shell_output("#{bin}/satpulsewb --version 2>&1")
+      assert_match "--config-file", shell_output("#{sbin}/satpulsed --help 2>&1")
+      assert_match "usage: find-serial", shell_output("#{bin}/find-serial --help 2>&1")
     end
   end
 
