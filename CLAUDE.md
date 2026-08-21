@@ -30,17 +30,27 @@ checkout or clone the repo into a temp dir.
 
 `def install` depends on these satpulse files, so changes there can require
 formula updates:
-- `unix-build.sh` — builds the Go binaries (derives version from git; needs a
-  real clone with `.git`, which the git download strategy provides).
-- `macos/Makefile` / `macos/find-serial.c` — the `find-serial` C tool.
-- `docs/man/*.md` — rendered to man pages with pandoc (`unix-build.sh` does NOT
-  generate man pages; only the Makefile does, so the formula runs pandoc itself).
-- `configs/satpulse.toml` — installed as the default config, with edits applied
-  at install time (schema path, `log.dir` under the prefix, and a rewrite of the
-  systemd-specific comment above `#device`).
-- `configs/gpsmsg` and `configs/config-schema.json` — installed under
-  `share/satpulse` (use `share/"satpulse"`, NOT `pkgshare`, which would be
-  `share/satpulse-pre` for that formula).
+- `Makefile.unix` (reached via the dispatch in `Makefile`, so plain `make`
+  works) — `make` builds the Go binaries (derives version from git; needs a
+  real clone with `.git`, which the git download strategy provides) and renders
+  `docs/man/*.md` to man pages with pandoc — the reason pandoc is a build dep.
+  `make install prefix=#{prefix} sysconfdir=#{etc}` then installs everything
+  except find-serial: binaries, man pages, `configs/gpsmsg` (→
+  `share/satpulse`) and `configs/config-schema.json` (→ `share/doc/satpulse` —
+  documentation, per Debian Policy 12.3: only schema-aware TOML editors read
+  it). Both are channel-shared paths, deliberately not `pkgshare`/`doc`, which
+  embed the formula name (`share/satpulse-pre` for that formula). The formula
+  rewrites the keg paths `make install` bakes into two man pages to
+  `opt_prefix` (`satpulsed.8` gets only `#{etc}`, so it needs no rewrite).
+- `macos/Makefile` / `macos/find-serial.c` — the `find-serial` C tool
+  (`Makefile.unix` holds no platform-specific knowledge, so macOS bits stay in
+  the formula).
+- `configs/satpulse.toml` — `make install` writes it to `etc/satpulse.toml`
+  only when absent (so user edits survive upgrades); the formula then applies
+  macOS edits (schema path to `opt_prefix`, `log.dir` under `var`, and a
+  rewrite of the systemd-specific comment above `#device`) — only to a freshly
+  written file, since an existing config may lack the patterns and `inreplace`
+  fails when a pattern is absent.
 
 ## Updating the pinned revisions
 

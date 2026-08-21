@@ -53,72 +53,54 @@ module SatpulseFormula
   end
 
   def install
-    # Build the Go binaries. unix-build.sh derives the embedded version from git,
-    # so the build dir must be a real clone with .git (it is, via the git
-    # download strategy). It builds for the host GOOS/GOARCH.
-    system "./unix-build.sh"
-    goarch = Hardware::CPU.arm? ? "arm64" : "amd64"
-    out = "out/darwin_#{goarch}"
-    sbin.install "#{out}/satpulsed"
-    bin.install "#{out}/satpulsetool", "#{out}/satpulsewb"
+    # Build the Go binaries and the man pages (`make` on macOS dispatches to
+    # Makefile.unix, which uses pandoc for the man pages -- hence the build
+    # dep). The embedded version is derived from git, so the build dir must be
+    # a real clone with .git (it is, via the git download strategy).
+    system "make"
+
+    # make install lays out everything except find-serial: binaries into
+    # sbin/bin, man pages, gpsmsg files (share/satpulse) and the config schema
+    # (share/doc/satpulse) -- paths shared by both channels, unlike pkgshare or
+    # doc, which embed the formula name. sysconfdir=#{etc} makes it write the
+    # default satpulse.toml to HOMEBREW_PREFIX/etc, outside the keg, so it
+    # survives upgrades; the target skips the config when the file already
+    # exists, so user edits are preserved. Record freshness first: the macOS
+    # config edits below must apply only to a file make install just wrote.
+    config_is_fresh = !(etc/"satpulse.toml").exist?
+    system "make", "install", "prefix=#{prefix}", "sysconfdir=#{etc}"
+
+    # make install bakes #{prefix} -- the versioned keg path -- into these two
+    # man pages (the gpsmsg dir in satpulsetool-gps.1, the schema dir in
+    # satpulse.toml.5); rewrite to the stable opt_prefix so nothing points into
+    # the Cellar (the lz4/ncurses pattern in homebrew-core). satpulsed.8 is not
+    # in the list: it only gets sysconfdir baked in, which is already the
+    # stable #{etc} -- and inreplace fails when its pattern is absent.
+    inreplace [man1/"satpulsetool-gps.1", man5/"satpulse.toml.5"], prefix, opt_prefix
 
     # find-serial is a standalone Darwin C tool with its own Makefile, built
-    # separately from the Go binaries (unix-build.sh does not build it).
+    # separately (Makefile.unix deliberately holds no platform-specific
+    # knowledge, so macOS bits stay here).
     system "make", "-C", "macos"
     bin.install "macos/find-serial"
 
-    # GPS message files (referenced by `satpulsetool gps -m ...`) and the config
-    # JSON schema, for parity with the deb/rpm. Install under share/"satpulse"
-    # (not pkgshare, which is share/<formula-name> -- "satpulse-pre" for that
-    # formula -- so both channels share one path).
-    (share/"satpulse").install "configs/gpsmsg"
-    (share/"satpulse").install "configs/config-schema.json"
-
-    install_man_pages
-    install_config
+    (var/"log/satpulse").mkpath
+    localize_config if config_is_fresh
     install_service_wrapper
   end
 
-  # unix-build.sh does not generate man pages (only the Makefile does), so the
-  # formula generates them with pandoc and applies the same path substitutions
-  # the Makefile does, but against the Homebrew prefix.
-  def install_man_pages
-    man_pages = %w[
-      satpulsetool.1 satpulsetool-gps.1 satpulsetool-serial.1 satpulsetool-pack.1
-      satpulsetool-scan.1 satpulsetool-sdp.1 satpulsetool-syncsim.1
-      satpulsetool-convobs.1 satpulsewb.1 satpulse.toml.5 satpulsed.8
-    ]
-    man_pages.each do |page|
-      title = File.basename(page, ".*")     # e.g. "satpulse.toml" from "satpulse.toml.5"
-      section = File.extname(page)[1..]     # e.g. "5"
-      system "pandoc", "-s",
-             "--metadata=title=#{title}",
-             "--metadata=section=#{section}",
-             "--metadata=author=James Clark",
-             "-t", "man", "-o", page, "docs/man/#{page}.md"
-      # opt_prefix (stable) not the versioned keg; share/satpulse not pkgshare.
-      case page
-      when "satpulsetool-gps.1"
-        inreplace page, "/usr/share/satpulse/gpsmsg", "#{opt_prefix}/share/satpulse/gpsmsg"
-      when "satpulsed.8"
-        inreplace page, "/etc/satpulse.toml", "#{etc}/satpulse.toml"
-      end
-      send("man#{section}").install page
-    end
-  end
-
-  # Install configs/satpulse.toml as the default <prefix>/etc/satpulse.toml.
-  # Almost everything in it is optional and off by default, so a non-root
-  # LaunchAgent needs only two edits: point the schema and log directory under
-  # the Homebrew prefix. The serial device is left unset here; by default the
-  # launchd service auto-discovers it with find-serial and passes it as -d. To
-  # use a fixed device, set it here and disable find-serial in find-serial.env.
-  def install_config
-    (var/"log/satpulse").mkpath
-
-    config = buildpath/"configs/satpulse.toml"
-    inreplace config do |s|
-      s.gsub!(/^#:schema .*/, "#:schema #{opt_prefix}/share/satpulse/config-schema.json")
+  # macOS edits to the default config that make install just wrote to
+  # etc/satpulse.toml: point the #:schema line at opt_prefix (make install
+  # baked in the versioned keg path), the log directory under var, and replace
+  # the systemd-specific comment above #device. Only ever applied to a freshly
+  # written file -- an existing config is the user's copy, which may not
+  # contain these patterns, and inreplace fails the build when a pattern is
+  # absent. The serial device is left unset; by default the launchd service
+  # auto-discovers it with find-serial and passes it as -d. To use a fixed
+  # device, set it in the config and disable find-serial in find-serial.env.
+  def localize_config
+    inreplace etc/"satpulse.toml" do |s|
+      s.gsub!(/^#:schema .*/, "#:schema #{opt_prefix}/share/doc/satpulse/config-schema.json")
       s.gsub!(/^#dir = .*/, "dir = \"#{var}/log/satpulse\"")
       # The stock comment block above #device is systemd-specific; on macOS the
       # launchd service sets the device itself. Replace whatever comment lines
@@ -130,9 +112,6 @@ module SatpulseFormula
         "# find-serial.env (set FIND_SERIAL_DISABLE).\n",
       )
     end
-
-    # Do not overwrite an existing config on upgrade; user edits survive.
-    etc.install config => "satpulse.toml" unless (etc/"satpulse.toml").exist?
   end
 
   # The launchd job runs this wrapper instead of calling find-serial directly,
