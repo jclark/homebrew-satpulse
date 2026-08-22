@@ -28,11 +28,23 @@ module SatpulseFormula
       # configured in etc/find-serial.env -- a config file preserved across
       # upgrades -- instead of this plist, which brew regenerates on every install.
       #
-      # Deliberately no keep_alive: the daemon runs once when the user starts the
-      # service. Auto-restart is unsafe today -- find-serial matches any USB
-      # serial device, so a respawn could grab an unrelated device (likely at the
-      # wrong baud rate). Re-introducing restart needs a find-serial --wait that
-      # blocks on a specific VID/PID first (base-repo work).
+      # Deliberately no keep_alive: the daemon runs once when the user starts
+      # the service. The blocker is not upstream -- find-serial has had --wait
+      # since satpulse ff6de9ac, and it honours --vid/--pid/--serial/--location
+      # -- it is that restart cannot be made conditional on the user having
+      # pinned a device:
+      #   - the shipped default leaves FIND_SERIAL_OPTS empty, so find-serial
+      #     matches any USB serial device and a respawn could grab an unrelated
+      #     one (likely at the wrong baud rate);
+      #   - keep_alive lives in this plist, which is regenerated from here on
+      #     every install, so it cannot be turned on per user the way
+      #     find-serial.env settings can;
+      #   - the wrapper does not pass --wait, so with no device present
+      #     find-serial exits EX_UNAVAILABLE at once and keep_alive would just
+      #     throttle-loop; passing --wait unfiltered would instead block and
+      #     hand satpulsed whichever device turned up next.
+      # Restart therefore needs wrapper-side work here (wait/re-exec only when
+      # FIND_SERIAL_OPTS identifies a device), not a base-repo change.
       run opt_libexec/"satpulse-service"
       log_path var/"log/satpulse/launchd.out.log"
       error_log_path var/"log/satpulse/launchd.err.log"
