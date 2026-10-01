@@ -136,9 +136,13 @@ scratch:
     # registration left from earlier testing survives. A leftover registration
     # makes the next `brew services run` fail with `Bootstrap failed: 5:
     # Input/output error` (launchctl bootstrap on an already-present label).
-    # Boot the labels out directly, independent of install state:
-    launchctl bootout "gui/$(id -u)/homebrew.mxcl.satpulse"     2>/dev/null
-    launchctl bootout "gui/$(id -u)/homebrew.mxcl.satpulse-pre" 2>/dev/null
+    # Boot the labels out directly, independent of install state. Current brew
+    # labels services `sh.brew.<formula>`; older brew used `homebrew.mxcl.<formula>`,
+    # so boot out both:
+    for f in satpulse satpulse-pre; do
+      launchctl bootout "gui/$(id -u)/sh.brew.$f"       2>/dev/null
+      launchctl bootout "gui/$(id -u)/homebrew.mxcl.$f" 2>/dev/null
+    done
     # uninstall each separately: uninstalling a NOT-installed formula from an
     # untrusted local-path tap errors and would abort a combined command
     brew uninstall --force satpulse     2>/dev/null
