@@ -2,84 +2,49 @@
 
 A [Homebrew](https://brew.sh) tap for [SatPulse](https://satpulse.net).
 
-The formulae build from source (Go toolchain required) and run the daemon under
-launchd via `brew services`. There are no bottles yet.
+For how to install, configure and run SatPulse on macOS, see
+[Setup on macOS](https://satpulse.net/setup/macos.html) on the SatPulse website.
 
-## Install
+## Formulae
 
-The macOS port is still new, so use a prerelease:
-
-```sh
-brew tap jclark/satpulse
-brew install jclark/satpulse/satpulse-pre
-```
-
-Then edit `/opt/homebrew/etc/satpulse.toml` and start the service:
-
-```sh
-brew services run satpulse-pre
-```
-
-`satpulse-pre` gives you the latest prerelease that has been tested on macOS.
-(If there is no prerelease available, then it will give you the latest release.)
-
-You can also install the latest code on the `master` branch:
-
-```sh
-brew install --HEAD jclark/satpulse/satpulse
-```
-
-In this case, start the service with:
-
-```sh
-brew services run satpulse
-```
-
-See the [SatPulse setup guide](https://satpulse.net/setup/) for next steps.
-
-## Serial devices
-
-The daemon is started under launchd as a per-user LaunchAgent.
-
-With satpulsed on Linux, you have to explicitly specify the serial device to be used.
-But on macOS, USB serial device names `/dev/cu.*` change depending on which USB port or hub the device is plugged into.
-To make this convenient, launchd is configured to make use of [find-serial](https://satpulse.net/setup/gps-serial.html#macos),
-which is a small macOS-specific utility for discovering USB serial devices.
-`brew services` calls launchd with a `.plist` file; the `.plist` file references the service wrapper;
-the service wrapper loads its config from `find-serial.env`; if that does not disable the use of `find-serial`,
-then the service wrapper will call `find-serial` to discover the serial device name and then run `satpulsed` with the discovered serial device name.
-This all works automatically provided you have only one USB serial device plugged in.
-
-If you have more than one serial device, you can edit `find-serial.env` to match only a specific vendor and product id:
-
-```sh
-FIND_SERIAL_OPTS="--vid 1546 --pid 01A9"
-```
-
-To disable discovery altogether and use the `device` configured in `satpulse.toml`,
-set `FIND_SERIAL_DISABLE` to a non-empty value in the same file.
-
-## File layout
-
-Everything installs under the Homebrew prefix (`/opt/homebrew` on Apple Silicon,
-`/usr/local` on Intel), where `<formula>` is `satpulse` or `satpulse-pre`:
-
-| File | Location |
+| Formula | Tracks |
 |---|---|
-| `satpulsed` | `<prefix>/sbin/satpulsed` |
-| `satpulsetool` | `<prefix>/bin/satpulsetool` |
-| `satpulsewb` | `<prefix>/bin/satpulsewb` |
-| `find-serial` | `<prefix>/bin/find-serial` |
-| config | `<prefix>/etc/satpulse.toml` (not overwritten on upgrade) |
-| service config | `<prefix>/etc/find-serial.env` (not overwritten on upgrade) |
-| man pages | `<prefix>/share/man/man{1,5,8}/...` |
-| gpsmsg tree | `<prefix>/share/satpulse/gpsmsg/...` |
-| logs | `<prefix>/var/log/satpulse/...` |
-| service wrapper | `<prefix>/opt/<formula>/libexec/satpulse-service` |
-| launchd plist | `<prefix>/opt/<formula>/homebrew.mxcl.<formula>.plist` |
+| `satpulse-pre` | the latest prerelease tested on macOS (or the latest release, if that is newer) |
+| `satpulse` | the `master` branch; install with `--HEAD` |
 
-## Maintaining the prerelease channel
+`satpulse` is head-only until SatPulse 0.3 is released, when it will gain a
+stable version tracking the latest release.
 
-Re-pointing the prerelease channel is a two-line edit in
-`Formula/satpulse-pre.rb`: set a new `revision` (any commit on `master`) and bump
-`version` to a later `0.3-pre-YYYYMMDD` date.
+`satpulse-pre` is pinned to a specific commit on `master`, with a version of
+the form `0.3-pre-YYYYMMDD`.
+
+Both formulae build from source; there are no bottles. Only Apple Silicon is
+tested.
+
+## Updating the formulae
+
+`satpulse` follows `master` automatically, so it needs no update.
+
+To re-point `satpulse-pre` to a new prerelease, get the commit and its UTC date:
+
+```sh
+gh api repos/jclark/satpulse/commits/<tag-or-sha> --jq '.sha, .commit.committer.date'
+```
+
+Then edit the `revision` and `version` in `Formula/satpulse-pre.rb`:
+
+```ruby
+url "https://github.com/jclark/satpulse.git",
+    revision: "<full 40-character sha>"
+version "0.3-pre-YYYYMMDD"
+```
+
+The version must increase for `brew upgrade` to pick up the change. There are
+no checksums to update: the formulae use git, so the revision is the integrity
+check.
+
+After installing, `satpulsetool --version` shows the version and short commit.
+
+When 0.3 is released, add a `stable` block to `Formula/satpulse.rb`
+(`url "https://github.com/jclark/satpulse.git", tag: "v0.3", revision: "<sha>"`),
+keeping the `head` line.
