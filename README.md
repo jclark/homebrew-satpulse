@@ -25,13 +25,12 @@ tested.
 
 `satpulse` follows `master` automatically, so it needs no update.
 
-To re-point `satpulse-pre` to a new prerelease, get the commit and its UTC date:
+To re-point `satpulse-pre` to a new prerelease, such as `v0.3-pre-20261001`,
+edit two lines in `Formula/satpulse-pre.rb`:
 
-```sh
-gh api repos/jclark/satpulse/commits/<tag-or-sha> --jq '.sha, .commit.committer.date'
-```
-
-Then edit the `revision` and `version` in `Formula/satpulse-pre.rb`:
+- `revision`: the full 40-character sha of the commit that the prerelease tag
+  points to (the GitHub release page links to it)
+- `version`: the tag name without the leading `v`, e.g. `0.3-pre-20261001`
 
 ```ruby
 url "https://github.com/jclark/satpulse.git",
