@@ -13,6 +13,6 @@ class SatpulsePre < Formula
   # (An @-versioned line such as satpulse@0.3 -- which would carry users in place
   # 0.3-pre -> 0.3 -> 0.3.1 -- is separate Future work.)
   url "https://github.com/jclark/satpulse.git",
-      revision: "5c8989e5f24fc87978a23434697a7fce8ddf5cf3"
-  version "0.3-pre-20260913"
+      revision: "a3feca07a179a1ce1d4b24267b24e7110be8f8a3"
+  version "0.3-pre-20261001"
 end
