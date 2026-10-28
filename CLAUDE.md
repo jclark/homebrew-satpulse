@@ -15,10 +15,12 @@ both built from source.
   tracks a release). Re-pointing it is a two-line edit (revision + version).
 - `lib/satpulse_formula.rb` — the **shared body**. Both formulae
   `include SatpulseFormula`; it contributes the dependencies, `install`,
-  `service`, `caveats`, and `test`. **Change shared behaviour here, not in the
-  two formula files**, which only declare their own `desc`, `homepage`, and
-  download spec. (`homepage` must stay in each formula file — brew's Homepage
-  audit is AST-based and can't see it inside the module.)
+  `service`, `caveats`, and the `satpulse_test` smoke test. **Change shared
+  behaviour here, not in the two formula files**, which only declare their own
+  `desc`, `homepage`, download spec, `conflicts_with`, and a `test do` that just
+  calls `satpulse_test`. (`homepage` and `test do` must stay in each formula
+  file — brew's Homepage and Test audits are AST-based and can't see them
+  inside the module.)
 - `.github/workflows/test.yml` — CI.
 
 ## The satpulse source repo
@@ -191,7 +193,7 @@ which writes the formula into `trust.json` and prints `Trusted formula …` —
 - `syntax`: `brew test-bot --only-tap-syntax` (style + actionlint + audit).
 - `test` (macos-15, Apple Silicon only — the project does not test/ship Intel):
   builds both channels `--build-from-source` and runs `brew test` on each. The
-  smoke tests themselves live in the shared `test do` block (hardware-free:
+  smoke tests themselves live in the shared `satpulse_test` (hardware-free:
   `--version`/`--help` only), so `brew test <formula>` locally runs exactly what
   CI runs.
 

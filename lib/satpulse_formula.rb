@@ -7,8 +7,8 @@
 # would otherwise duplicate their whole body. Both `include SatpulseFormula`,
 # which contributes the common dependencies, install logic, service, and test;
 # each formula file only declares its own desc, homepage, and download spec.
-# (homepage stays in the formula files because brew's Homepage audit is
-# AST-based and cannot see it here.)
+# (homepage and a one-line `test do` stay in the formula files because brew's
+# Homepage and Test audits are AST-based and cannot see them here.)
 module SatpulseFormula
   def self.included(formula)
     formula.license "MIT"
@@ -49,19 +49,6 @@ module SatpulseFormula
       run opt_libexec/"satpulse-service"
       log_path var/"log/satpulse/launchd.out.log"
       error_log_path var/"log/satpulse/launchd.err.log"
-    end
-
-    # The full hardware-free smoke test: CI just runs `brew test` on each
-    # channel, so this is the single place the checks live. The Go tools print
-    # --version/--help to stderr, so redirect it into the captured stdout;
-    # without the 2>&1 shell_output sees an empty string. find-serial gets
-    # --help (deterministic exit 0) because its listing mode depends on IOKit
-    # enumeration, which is not reliable on a headless runner.
-    formula.test do
-      assert_match "satpulse", shell_output("#{bin}/satpulsetool --version 2>&1")
-      assert_match "satpulse", shell_output("#{bin}/satpulsewb --version 2>&1")
-      assert_match "--config-file", shell_output("#{sbin}/satpulsed --help 2>&1")
-      assert_match "usage: find-serial", shell_output("#{bin}/find-serial --help 2>&1")
     end
   end
 
@@ -182,5 +169,19 @@ module SatpulseFormula
       To start #{full_name} now and not restart at login:
         brew services run #{full_name}
     EOS
+  end
+
+  # The full hardware-free smoke test, called from each formula's `test do`:
+  # CI just runs `brew test` on each channel, so this is the single place the
+  # checks live. The Go tools print --version/--help to stderr, so redirect it
+  # into the captured stdout; without the 2>&1 shell_output sees an empty
+  # string. find-serial gets --help (deterministic exit 0) because its listing
+  # mode depends on IOKit enumeration, which is not reliable on a headless
+  # runner.
+  def satpulse_test
+    assert_match "satpulse", shell_output("#{bin}/satpulsetool --version 2>&1")
+    assert_match "satpulse", shell_output("#{bin}/satpulsewb --version 2>&1")
+    assert_match "--config-file", shell_output("#{sbin}/satpulsed --help 2>&1")
+    assert_match "usage: find-serial", shell_output("#{bin}/find-serial --help 2>&1")
   end
 end

@@ -17,4 +17,8 @@ class SatpulsePre < Formula
   version "0.3"
 
   conflicts_with "satpulse", because: "both install the same files"
+
+  test do
+    satpulse_test
+  end
 end

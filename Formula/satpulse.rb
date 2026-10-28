@@ -11,4 +11,8 @@ class Satpulse < Formula
   head "https://github.com/jclark/satpulse.git", branch: "master"
 
   conflicts_with "satpulse-pre", because: "both install the same files"
+
+  test do
+    satpulse_test
+  end
 end
