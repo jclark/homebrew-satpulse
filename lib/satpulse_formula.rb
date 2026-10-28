@@ -13,12 +13,13 @@ module SatpulseFormula
   def self.included(formula)
     formula.license "MIT"
 
-    # Pin to go@1.25 to match what the satpulse repo builds and tests against
-    # (go.mod: go 1.25.0; its CI uses go-version 1.25.x). Plain "go" tracks the
-    # newest Homebrew Go, which the project does not test. go@1.26 can't be used
-    # (it is only an alias for the latest "go", which brew audit rejects). Bump
-    # this when the project moves to a newer Go line that has a real go@ formula.
-    formula.depends_on "go@1.25" => :build
+    # Pin to go@1.26 to match what the satpulse repo builds and tests against
+    # (go.mod: go 1.26.0; its CI uses go-version 1.26.x). Plain "go" tracks the
+    # newest Homebrew Go, which the project does not test. The go@ formula for
+    # the newest Go line is only an alias for "go", which brew audit rejects.
+    # Bump this when the project moves to a newer Go line that has a real go@
+    # formula.
+    formula.depends_on "go@1.26" => :build
     formula.depends_on "pandoc" => :build
     formula.depends_on :macos
 

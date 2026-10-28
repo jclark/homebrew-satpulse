@@ -83,11 +83,12 @@ download strategy, so the commit `revision` IS the integrity check.
 
 ## Pinned Go version
 
-The build pins `depends_on "go@1.25" => :build` to match satpulse's tested Go
-(`go.mod: go 1.25.0`; its CI uses `go-version 1.25.x`). Plain `go` tracks the
-newest Homebrew Go, which the project does not test. `go@1.26` can't be used: it
-is only an alias for `go`, and `brew audit` rejects depending on an alias. Bump
-this only when satpulse moves to a Go line that has a real `go@N.NN` formula.
+The build pins `depends_on "go@1.26" => :build` to match satpulse's tested Go
+(`go.mod: go 1.26.0`; its CI uses `go-version 1.26.x`). Plain `go` tracks the
+newest Homebrew Go, which the project does not test. The `go@N.NN` for the
+newest Go line is only an alias for `go`, and `brew audit` rejects depending on
+an alias. Bump this only when satpulse moves to a Go line that has a real
+`go@N.NN` formula.
 
 ## Local testing — and the HOMEBREW_NO_AUTO_UPDATE gotcha
 
