@@ -6,12 +6,13 @@ both built from source.
 
 ## Layout
 
-- `Formula/satpulse.rb` — rolling ">= release" channel. **Head-only** (a `head`
-  line, no `stable` block) until satpulse v0.3 ships.
+- `Formula/satpulse.rb` — rolling ">= release" channel. A `stable` spec on the
+  latest release tag (`tag:` plus `revision:`), and a `head` line following
+  `master`.
 - `Formula/satpulse-pre.rb` — rolling ">= prerelease" channel. A normal `stable`
   formula pinned to a `revision` on satpulse `master`, with an explicit
-  `version "0.3-pre-YYYYMMDD"`. Re-pointing it is a two-line edit (revision +
-  version).
+  `version "0.4-pre-YYYYMMDD"` (or the release version, e.g. `"0.3"`, when it
+  tracks a release). Re-pointing it is a two-line edit (revision + version).
 - `lib/satpulse_formula.rb` — the **shared body**. Both formulae
   `include SatpulseFormula`; it contributes the dependencies, `install`,
   `service`, `caveats`, and `test`. **Change shared behaviour here, not in the
@@ -57,10 +58,11 @@ formula updates:
 There are **no `sha256` checksums** to maintain — the formulae use Homebrew's git
 download strategy, so the commit `revision` IS the integrity check.
 
-- `Formula/satpulse.rb` is **head-only**: it follows `master`'s tip
-  automatically, so "match head" needs no edit. (When v0.3 ships, add a `stable`
-  block — `url "...git", tag: "v0.3", revision: "<sha>"` — keeping the `head`
-  line.)
+- `Formula/satpulse.rb`'s `head` follows `master`'s tip automatically, so
+  "match head" needs no edit. Its `stable` spec changes only at a release:
+  set `tag:` to the release tag and `revision:` to the commit it points to, and
+  re-point `satpulse-pre` to the same commit with the release version (Homebrew
+  orders `0.3-pre-YYYYMMDD` before `0.3`, so `brew upgrade` fires).
 - `Formula/satpulse-pre.rb` pins one commit. To re-point it, get the target
   commit and its UTC date:
 
@@ -72,11 +74,11 @@ download strategy, so the commit `revision` IS the integrity check.
   then edit two lines in the formula:
 
       revision: "<full 40-char sha>"
-      version  "0.3-pre-<YYYYMMDD>"      # the commit's UTC date, no dashes
+      version  "0.4-pre-<YYYYMMDD>"      # the commit's UTC date, no dashes
 
   `version` must increase monotonically for `brew upgrade` to fire. The date is
   normally enough; if you re-point twice in one UTC day, append a disambiguator
-  (e.g. `0.3-pre-YYYYMMDD.2`). Validate as in "Local testing", then confirm with
+  (e.g. `0.4-pre-YYYYMMDD.2`). Validate as in "Local testing", then confirm with
   `satpulsetool --version`, which stamps the version and the short sha.
 
 ## Pinned Go version

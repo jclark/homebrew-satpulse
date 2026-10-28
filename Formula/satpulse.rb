@@ -5,7 +5,8 @@ class Satpulse < Formula
 
   desc "Integrated GPS timing daemon and configuration tool"
   homepage "https://github.com/jclark/satpulse"
-  # Head-only for now. A `stable` block (url ...git, tag: "v0.3", revision: ...)
-  # is added at the v0.3 release; until then use `brew install --HEAD`.
+  url "https://github.com/jclark/satpulse.git",
+      tag:      "v0.3",
+      revision: "506c53a8c302ff00a66f8727a0b4a0df08ae4dc2"
   head "https://github.com/jclark/satpulse.git", branch: "master"
 end
