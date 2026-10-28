@@ -17,7 +17,7 @@ both built from source.
   `include SatpulseFormula`; it contributes the dependencies, `install`,
   `service`, `caveats`, and the `satpulse_test` smoke test. **Change shared
   behaviour here, not in the two formula files**, which only declare their own
-  `desc`, `homepage`, download spec, `conflicts_with`, and a `test do` that just
+  `desc`, `homepage`, download spec, and a `test do` that just
   calls `satpulse_test`. (`homepage` and `test do` must stay in each formula
   file — brew's Homepage and Test audits are AST-based and can't see them
   inside the module.)

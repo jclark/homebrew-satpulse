@@ -16,8 +16,6 @@ class SatpulsePre < Formula
       revision: "506c53a8c302ff00a66f8727a0b4a0df08ae4dc2"
   version "0.3"
 
-  conflicts_with "satpulse", because: "both install the same files"
-
   test do
     satpulse_test
   end
